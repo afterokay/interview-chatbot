@@ -157,7 +157,7 @@ def get_ai_response(system_prompt: str, chat_history: list, user_message: str) -
     - user_message: 학생이 방금 입력한 메시지
     """
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",      # 무료 티어에서 사용 가능한 빠른 모델
+        model_name="gemini-2.0-flash",      # 무료 티어에서 사용 가능한 빠른 모델
         system_instruction=system_prompt,   # 인물 역할 고정
     )
 
@@ -209,7 +209,7 @@ def generate_report(character_name: str, chat_history: list, student_name: str) 
 (인터뷰에서 가장 인상 깊었던 인물의 말 한 문장을 인용하고, 그 이유를 한 줄로 설명)
 ---"""
 
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+    model = genai.GenerativeModel(model_name="gemini-2.0-flash")
     response = model.generate_content(report_prompt)
     return response.text
 
