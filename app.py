@@ -3,6 +3,7 @@
 #  파일명: app.py
 #  실행 방법: streamlit run app.py
 #  필요 패키지: pip install streamlit anthropic
+#  API: 충남대학교 AI 포털 (Mindlogic Gateway)
 # ============================================================
 
 import streamlit as st
@@ -98,31 +99,30 @@ CHARACTERS = {
 }
 
 
-# ── Anthropic 클라이언트 초기화 ──────────────────────────────
-# Streamlit Cloud의 secrets.toml에 ANTHROPIC_API_KEY를 등록해야 합니다.
+# ── 충남대 AI 포털 클라이언트 초기화 ────────────────────────
+# Anthropic SDK를 그대로 사용하되, base_url만 충남대 포털 주소로 변경합니다.
 try:
-    client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+    client = anthropic.Anthropic(
+        api_key=st.secrets["CNU_API_KEY"],
+        base_url="https://factchat-cloud.mindlogic.ai/v1/gateway/claude",
+    )
 except Exception:
-    st.error("⚠️ API 키가 설정되지 않았습니다. `.streamlit/secrets.toml` 파일에 `ANTHROPIC_API_KEY`를 입력해 주세요.")
+    st.error("⚠️ API 키가 설정되지 않았습니다. `.streamlit/secrets.toml` 파일에 `CNU_API_KEY`를 입력해 주세요.")
     st.stop()
 
 
 def get_ai_response(system_prompt: str, chat_history: list, user_message: str) -> str:
-    """
-    Anthropic Claude API를 호출하여 AI 응답을 생성합니다.
-    """
-    # 대화 기록을 Anthropic 형식으로 변환
+    """충남대 AI 포털을 통해 Claude 응답을 생성합니다."""
     messages = []
     for msg in chat_history:
         messages.append({
             "role": msg["role"],
             "content": msg["content"]
         })
-    # 현재 질문 추가
     messages.append({"role": "user", "content": user_message})
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",   # 빠르고 경제적인 모델
+        model="claude-sonnet-4-6",   # 충남대 포털에서 제공하는 Claude 4.6 Sonnet
         max_tokens=1000,
         system=system_prompt,
         messages=messages,
@@ -131,9 +131,7 @@ def get_ai_response(system_prompt: str, chat_history: list, user_message: str) -
 
 
 def generate_report(character_name: str, chat_history: list, student_name: str) -> str:
-    """
-    대화 기록을 바탕으로 수행평가용 인터뷰 보고서를 생성합니다.
-    """
+    """대화 기록을 바탕으로 수행평가용 보고서를 생성합니다."""
     conversation_text = "\n".join(
         [f"{'학생' if m['role'] == 'user' else character_name}: {m['content']}"
          for m in chat_history]
@@ -145,7 +143,7 @@ def generate_report(character_name: str, chat_history: list, student_name: str) 
 {conversation_text}
 =================
 
-위 대화를 분석하여 다음 형식에 맞는 수행평가 보고서를 한국어로 작성해 주세요.
+위 대화를 분석하여 수행평가 보고서를 한국어로 작성해 주세요.
 마크다운 없이 순수 텍스트로만 출력하세요.
 
 ---
@@ -166,7 +164,7 @@ def generate_report(character_name: str, chat_history: list, student_name: str) 
 ---"""
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=1000,
         messages=[{"role": "user", "content": report_prompt}],
     )
@@ -207,7 +205,6 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    # 인물이 바뀌면 대화 기록 초기화
     if selected_char != st.session_state.current_character:
         st.session_state.current_character = selected_char
         st.session_state.chat_history = []
@@ -226,7 +223,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("Powered by Anthropic Claude API")
+    st.caption("Powered by 충남대학교 AI 포털")
 
 
 # ── 메인 화면 ────────────────────────────────────────────────
@@ -247,7 +244,6 @@ if not st.session_state.chat_history:
         icon="💬"
     )
 
-# 채팅 기록 출력
 for message in st.session_state.chat_history:
     if message["role"] == "user":
         with st.chat_message("user"):
@@ -256,7 +252,6 @@ for message in st.session_state.chat_history:
         with st.chat_message("assistant", avatar=char_data["emoji"]):
             st.write(message["content"])
 
-# 사용자 입력 처리
 user_input = st.chat_input(f"{selected_char}에게 질문해 보세요...")
 
 if user_input:
@@ -307,7 +302,6 @@ with col2:
     if not can_generate:
         st.caption("💡 최소 2번 이상 대화 후 생성 가능합니다.")
 
-# 보고서 출력
 if st.session_state.report_text:
     st.markdown("---")
     st.markdown("#### 📄 생성된 보고서")
